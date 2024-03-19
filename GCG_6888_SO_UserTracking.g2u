@@ -1,0 +1,118 @@
+﻿Program.Sub.Preflight.Start
+V.Global.sError.Declare(String)
+
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+'Author: Arturo Almaguer
+'Date: 01 September 2022
+'Customer: Hoffman Instrumentation Supply
+'This program keeps track of who created an order and who last modified the order too.
+'This script is triggered off hooks shown below.
+'Company Options (Standard) > Order Entry Table Maintenance > User Fields
+
+Function.Intrinsic.UI.UsePixels ' Allows you to use Pixels instead of Twips throughout
+
+F.Intrinsic.Control.Try
+
+	F.Intrinsic.Control.SelectCase(V.Caller.Hook)
+
+		F.Intrinsic.Control.Case(32810)
+		'SO Header User Fields screen populate hook
+			
+			'Locking UF1 field and browser.
+			F.Intrinsic.UI.ChangeCallerProperty(V.Passed.000007, "LOCK", 1)
+			F.Intrinsic.UI.ChangeCallerProperty(V.Passed.000012, "LOCK", 1)
+			
+			'Locking UF2 field and browser.
+			F.Intrinsic.UI.ChangeCallerProperty(V.Passed.000008, "LOCK", 1)
+			F.Intrinsic.UI.ChangeCallerProperty(V.Passed.000015, "LOCK", 1)
+			
+		F.Intrinsic.Control.Case(11872)
+		'SO Header post save hook
+
+			'Calling subs to update UFs
+			F.Intrinsic.Control.If(V.Caller.Switches, =, "N")
+				F.Intrinsic.Control.CallSub("UpdateUF1")
+			F.Intrinsic.Control.ElseIf(V.Caller.Switches, =, "O")
+				F.Intrinsic.Control.CallSub("UpdateUF2")
+			F.Intrinsic.Control.EndIf
+			
+	F.Intrinsic.Control.EndSelect
+
+F.Intrinsic.Control.Catch
+
+	F.Intrinsic.Control.CallSub(CatchError)
+	
+F.Intrinsic.Control.EndTry
+Program.Sub.Main.End
+Program.Sub.UpdateUF1.Start
+'This subroutine stores username of the user who created the SO in SO UF1.
+
+F.Intrinsic.Control.Try
+
+	V.Local.sSQL.Declare(String)
+	V.Local.sOrderNo.Declare(String)
+	V.Local.sUserName.Declare(String)
+	
+	'Getting Order Number and UserName associated to user
+	F.Intrinsic.String.LPad(V.Passed.000003, "0",7,V.Local.sOrderNo)
+	F.Global.Security.GetFullName(V.Caller.User, v.Caller.CompanyCode, V.Local.sUserName)
+	
+	'Updating UF1
+	F.ODBC.Connection!Con.OpenCompanyConnection
+	F.Intrinsic.String.Build("update ORDER_HEADER set USER_1 = '{0}' where ORDER_NO = '{1}' and RECORD_NO = '  A';", V.Local.sUserName, V.Local.sOrderNo, V.Local.sSQL)
+	F.ODBC.Connection!Con.Execute(V.Local.sSQL)
+	F.ODBC.Connection!Con.Close
+
+F.Intrinsic.Control.Catch
+
+	F.Intrinsic.Control.CallSub(CatchError)
+	
+F.Intrinsic.Control.EndTry
+Program.Sub.UpdateUF1.End
+Program.Sub.UpdateUF2.Start
+'This subroutine stores username of the user who last modified the order in SO UF2.
+
+F.Intrinsic.Control.Try
+
+	V.Local.sSQL.Declare(String)
+	V.Local.sOrderNo.Declare(String)
+	V.Local.sUserName.Declare(String)
+	
+	'Getting Order Number and UserName associated to user
+	F.Intrinsic.String.LPad(V.Passed.000003, "0",7,V.Local.sOrderNo)
+	F.Global.Security.GetFullName(V.Caller.User, v.Caller.CompanyCode, V.Local.sUserName)
+	
+	'Updating UF2
+	F.ODBC.Connection!Con.OpenCompanyConnection
+	F.Intrinsic.String.Build("update ORDER_HEADER set USER_2 = '{0}' where ORDER_NO = '{1}' and RECORD_NO = '  A';", V.Local.sUserName, V.Local.sOrderNo, V.Local.sSQL)
+	F.ODBC.Connection!Con.Execute(V.Local.sSQL)
+	F.ODBC.Connection!Con.Close
+
+F.Intrinsic.Control.Catch
+
+	F.Intrinsic.Control.CallSub(CatchError)
+	
+F.Intrinsic.Control.EndTry
+Program.Sub.UpdateUF2.End
+Program.Sub.CatchError.Start
+'To display the error
+F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}", V.Ambient.ScriptPath, V.Ambient.Newline, V.Ambient.SubroutineCalledFrom, V.Ambient.ErrorNumber, V.Ambient.ErrorDescription, V.Ambient.GABVersion, V.Global.sError) 
+F.Intrinsic.UI.Msgbox(V.Global.sError)
+F.Intrinsic.Control.CallSub("Unload")
+Program.Sub.CatchError.End
+Program.Sub.Unload.Start
+'Closing the connection if it is open
+f.Intrinsic.Control.If(v.ODBC.con.exists,=,"1") 	
+    f.ODBC.Connection!Con.Close
+f.Intrinsic.Control.EndIf
+
+'Ending program
+F.Intrinsic.Control.End
+Program.Sub.Unload.End
+
+Program.Sub.Comments.Start
+${$5$}$20.1.8223.27623$}$1
+${$6$}$apadilla$}$20220901123706603$}$Lag9STqBJOmNXSbd5+msRcBWPGz0aFqSzPePUG9qWbw8cVq9YqCRcthUR9eXU+nPwV72sNstu+Y66P9Beryuwg==
+Program.Sub.Comments.End
